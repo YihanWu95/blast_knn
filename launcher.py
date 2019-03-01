@@ -42,7 +42,7 @@ torch.multiprocessing.set_sharing_strategy('file_system')
 
 proteins = pd.read_csv(protein_data_path)
 # num_proteins
-protein_test = proteins['name']
+protein_test = proteins['name'][0:num_loaded_proteins]
 x,y,unique_go_values,idxMF, idxBP, idxCC = prepare_data(memmap_dir,protein_test)
 
 print("Functions in MF: {}".format(len(idxMF)))
