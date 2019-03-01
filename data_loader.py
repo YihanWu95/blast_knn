@@ -1,0 +1,389 @@
+############################
+# data_loader.py
+#
+# Contains
+#	Data preparation: Filtering of annotations, compilation of ground truth vectors and class weights
+#	CoevolutionData: Dataset class used in the Pytorch DataLoader, implementing on demand loading of mememory mapped coevolution files
+#
+# Adapted from previous team and modified heavily by Konstantin Weissenow (k.weissenow@tum.de)
+############################
+
+import os
+import glob
+import numpy as np
+from collections import Counter
+from collections import defaultdict
+from collections import OrderedDict
+import torch
+import torch.utils.data
+from torch.autograd import Variable
+
+
+class CoevolutionData(torch.utils.data.Dataset):
+    """
+    Dataset class for co-evolution matrices, to load one memmap file at a time.
+    """
+    def __init__(self, x, y, coev_memmap_dir, coev_ext, pt_seq_dir):
+        """
+            :param x: L
+            :param y: List of numpy arrays containing ground truth data
+            """
+        self.x = x
+        self.y = y
+        self.channels = 441
+        self.coev_memmap_dir = coev_memmap_dir
+        self.coev_ext = coev_ext
+        self.pt_seq_dir = pt_seq_dir
+
+    def __len__(self):
+        return len(self.y)
+
+    def __getitem__(self, item):
+        # print("Fetching entry {} from data loader..".format(item))
+
+        protein_name = self.x[item]
+        label = self.y[item]
+
+        # find the memmap path for the coevolution data of a particular protein
+        coev_memmap_path = glob.glob(os.path.join(self.coev_memmap_dir, protein_name+self.coev_ext+'*.memmap'))[0]
+        # get length of protein from filename
+
+        name_parts = coev_memmap_path.split('_')
+        prot_len = int(name_parts[-5])
+
+        # New data computed has shape (L*L*C)
+        loaded_memmap = np.memmap(coev_memmap_path, dtype=np.float32, mode='r', shape=(prot_len, prot_len, self.channels))
+
+        coev_map = np.empty((prot_len, prot_len, self.channels), dtype=np.float32)
+        coev_map[:] = loaded_memmap[:]
+        del loaded_memmap
+        #delete YW
+        # # added YW build protein sequences feature
+        # pt_seq_path = glob.glob(os.path.join(self.pt_seq_dir, protein_name + '*.fa'))[0]
+        # loaded_pt = read_and_convert_ptseq(pt_seq_path)
+        # print("get",np.shape(loaded_pt))
+        # coev_map = np.concatenate((coev_map,loaded_pt),axis=2)
+        # # end added
+        # del loaded_pt
+        # end delete
+        # transpose because neural network expects (C,N,N)
+
+        coev_map = np.transpose(coev_map, (2, 1, 0))
+        return coev_map, label
+#added YW build protein sequences feature
+def read_and_convert_ptseq(pt_seq_path):
+    allSeqs = []
+    convert_ptseq = []
+    ptseq = list((open(pt_seq_path).read()).split("\n"))
+    for i in range(len(ptseq) - 1):
+        allSeqs += ptseq[i + 1]
+    table = {'A': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'K': 9, 'L': 10, 'M': 11, 'N': 12, 'P': 13,
+             'Q': 14, 'R': 15, 'S': 16, 'T': 17, 'V': 18, 'W': 19, 'Y': 20, 'X':21, 'U':22}
+    for x in range(0, len(allSeqs), 1):
+        convert_ptseq.append(table[allSeqs[x]])
+    convert_ptseq = np.array(convert_ptseq)
+    loaded_pt = np.zeros((len(convert_ptseq), len(convert_ptseq), 22),dtype=np.float32)
+    loaded_pt[np.arange(len(convert_ptseq)), np.arange(len(convert_ptseq)), convert_ptseq - 1] = 1
+    return loaded_pt
+#end(added)
+
+
+
+def get_protein_names(memmap_dir):
+    """
+    Get proteins identifiers from file names.
+    :param memmap_dir: string. Directory path to read files from.
+    :return: protein_names: List of strings. List of protein identifiers.
+    """
+    goterms_ext = "J"
+    protein_names = []
+    for filename in os.listdir(memmap_dir):
+        if goterms_ext not in filename:
+            continue
+        name_parts = filename.split('_')
+        protein_names.append(name_parts[0])
+    print("Find total ",len(protein_names)," proteins")
+    return protein_names
+
+
+def train_val_split(x, y, train_val_ratio, num_proteins):
+    """
+    :param x: List of strings. Protein names
+    :param y: List of arrays. Encoded ground truth.
+    :param train_val_ratio: float. Splitting ratio for train/validation sets.
+    :param num_proteins: Integer. Total number of proteins used.
+    :return: Tuple of splits
+    """
+
+    num_train_data = int(train_val_ratio * num_proteins)
+
+    x_train = x[:num_train_data]
+    y_train = y[:num_train_data]
+
+    x_val = x[num_train_data:]
+    y_val = y[num_train_data:]
+
+    return (x_train, y_train, x_val, y_val)
+
+
+def filter_functions(funcs_instances_counts, func_threshold):
+    """
+    Remove functions with annotations fewer than threshold
+    :param funcs_instances_counts: Counter. Has a count of instances for each function.
+    :return:Counter. With rare functions removed.
+    """
+    for func in list(funcs_instances_counts):
+        if funcs_instances_counts[func] < func_threshold:
+            del funcs_instances_counts[func]
+    return funcs_instances_counts
+
+
+def calculate_label_weights(unique_values, function_count_dict, num_samples):
+    """
+    Calculate label weights used to deal with imbalanced dataset.
+    The more often a function was encountered, the smaller the weight will be.
+    weight = count_all - count_fct/count_all
+    :param unique_values: list of integers. Unique GO labels that are encoded
+    :param function_count_dict: dictionary containing GO labels and num_occurances of GO labels.
+    :return: 1-D FloatTensor containing weights for each class
+    """
+    function_weights = torch.FloatTensor(len(unique_values))
+    for i,f in enumerate(unique_values):
+        function_weights[i] = float(num_samples - function_count_dict[f]) / num_samples
+        # DEBUG
+        print("Class: {} Annotations: {} Weight: {}".format(f, function_count_dict[f], function_weights[i]))
+    return function_weights
+
+
+def prepare_data(memmap_path, train_val_ratio, num_loaded_proteins, max_protein_len, min_protein_len, func_threshold, pt_seq_dir, verbose=True):
+    """
+    Prepare data
+    :param memmap_path: string
+    :param train_val_test_ratio: array of float. Train, val and test ratios for splitting data.
+    :param num_loaded_proteins:
+    :param prot_pack:
+    :param func_threshold
+    :param verbose: verbose
+    :return: train, test and validation data and encoded function information
+    """
+
+
+    coev_subdir = 'ccmpred/J_and_h/'
+    go_terms_subdir = 'GOterms'
+    coev_ext = '_J_'
+    goterms_ext = '.GOterms.memmap'
+    coev_memmap_dir = os.path.join(memmap_path, coev_subdir)
+    go_terms_memmap_dir = os.path.join(memmap_path, go_terms_subdir)
+
+    # TODO: 'go_ontologies.txt' is currently in the memmap_path, but should logically be in the go_terms_subdir, which is not writeable for me (Konstantin, 7.8.2018)
+    go_ontology_filename = os.path.join(memmap_path, 'Scripts/hierarchical_classification_GO_terms/go_db/term.txt')
+    main_ontologies_per_term_dict = {}
+    ontology_labels = {'molecular_function': 'F', 'biological_process': 'P', 'cellular_component': 'C'}
+    with open(go_ontology_filename) as f:
+        for line in f:
+            (termID, description, ontology, GOID) = line.split(',\'')
+            if GOID[:-2][:3] == 'GO:' and ontology[:-1] != '':
+                main_ontologies_per_term_dict[int(GOID[:-2][3:])] = ontology_labels[ontology[:-1]]
+
+
+    if verbose:
+        print('Searching in {0} for coev-data.\nSearching in {1} for GO terms.'.format(coev_memmap_dir, go_terms_memmap_dir))
+    protein_names = get_protein_names(coev_memmap_dir)  # List of protein identifiers
+   # print(protein_names[1000])
+    if verbose:
+        print('Found {0} proteins to be processed.'.format(len(protein_names)))
+
+    x = [] # List of proteins, where both coevolution and function memmap files exist (previously protein_names_existing)
+    funcs_instances_counter = Counter()  # Counter for annotations per function over all loaded proteins
+    funcs_dict = defaultdict(list)  # Dictionary of lists with protein identifiers as keys and functions as values (order of functions can be arbitrary!)
+
+    num_proteins = 0
+    num_total_loaded_proteins = 0;
+    while num_proteins < num_loaded_proteins:
+        num_total_loaded_proteins += 1
+        # print("num_total_loaded_proteins", num_total_loaded_proteins)
+        protein_name = protein_names[num_total_loaded_proteins+1000]
+        # print(protein_name)
+        # print("num_loaded_proteins",num_loaded_proteins)
+        #print("num_proteins", num_proteins)
+    # for protein_name in protein_names:  # Go through the list of protein identifiers
+#        coev_memmap_path = os.path.join(coev_memmap_dir, protein_name+coev_ext+'*.memmap')
+#        coev_memmap_path = glob.glob(coev_memmap_path)
+        func_memmap_path = os.path.join(go_terms_memmap_dir, protein_name + goterms_ext)
+        func_memmap_path = glob.glob(func_memmap_path)
+        if not (func_memmap_path): # (coev_memmap_path and func_memmap_path):
+            continue
+#        name_parts = coev_memmap_path[0].split('_')
+#        prot_len = int(name_parts[-5])
+#        if (prot_len <= max_protein_len and prot_len>= min_protein_len ):
+#         x.append(protein_name)
+#        elif (prot_len > max_protein_len):
+#            print('skipping current sample, protlen = %s > %s ' % (prot_len, max_protein_len))
+#            continue
+#        elif (prot_len < min_protein_len):
+#            print('skipping current sample, protlen = %s < %s ' % (prot_len, min_protein_len))
+#            continue
+        # Process memmap file of protein annotations, build a counter with number of annotations for each function
+        x.append(protein_name)
+        func_memmap_path = func_memmap_path[0]
+        func_memmap = np.memmap(func_memmap_path, dtype=np.int32, mode='r')
+        for func in func_memmap:
+            #if func in list(main_ontologies_per_term_dict.keys()):
+            #    if (main_ontologies_per_term_dict[func] == 'F'):
+            funcs_instances_counter[func] += 1
+            funcs_dict[protein_name].append(func)
+        del func_memmap
+
+        # To be removed. Number of proteins to load, ideally load all ~40K proteins
+        num_proteins += 1
+        # print("num_loaded_proteins", num_loaded_proteins)
+        # if num_proteins >= num_loaded_proteins:
+        #    break
+        if num_proteins % 100 == 0:
+            print("Loaded {} proteins".format(num_proteins))
+    print("Finished loading {} proteins total".format(num_proteins))
+
+
+    # Remove rare functions - we don't try to predict them
+    print("Total unique classes: {}".format(len(funcs_instances_counter)))
+    funcs_instances_counter = filter_functions(funcs_instances_counter, func_threshold)
+    print("Total unique classes after filtering: {}".format(len(funcs_instances_counter)))
+
+    # Sort GO terms in ascending order
+    unique_go_values = sorted(funcs_instances_counter.keys())
+    num_classes = len(unique_go_values)
+
+    # Compiling ground truth vectors
+    y = []
+    for protein_name in x:
+        np_ground_truth = np.zeros((num_classes), dtype=np.float32)
+        for i,goterm in enumerate(unique_go_values):
+            if goterm in funcs_dict[protein_name]:
+                np_ground_truth[i] = 1.0
+        y.append(np_ground_truth)
+
+    # Optional function weighting
+    function_weights = calculate_label_weights(unique_go_values, funcs_instances_counter, num_proteins)
+
+    # Splitting datasets
+    x_train, y_train, x_val, y_val = train_val_split(x, y, train_val_ratio, num_proteins)
+    train_data = CoevolutionData(x_train, y_train, coev_memmap_dir, coev_ext, pt_seq_dir)
+    val_data = CoevolutionData(x_val, y_val, coev_memmap_dir, coev_ext, pt_seq_dir)
+
+    # Preparing index lists for the three main ontologies
+    idxMF = []
+    idxBP = []
+    idxCC = []
+    for i,go_term in enumerate(unique_go_values):
+        if go_term not in list(main_ontologies_per_term_dict.keys()):
+            print("WARNING: Did not find {} in the ontology dictionary, skipping..".format(go_term))
+            continue
+        if main_ontologies_per_term_dict[go_term] == 'F':
+            idxMF.append(i)
+        if main_ontologies_per_term_dict[go_term] == 'P':
+            idxBP.append(i)
+        if main_ontologies_per_term_dict[go_term] == 'C':
+            idxCC.append(i)
+
+    return (
+        x_train,
+        x_val,
+        y_train,
+        y_val,
+        train_data,
+        val_data,
+        function_weights,
+        num_classes,
+        unique_go_values,
+        idxMF,
+        idxBP,
+        idxCC
+    )
+
+def prepare_test_data(memmap_path,protein_names,max_protein_len, min_protein_len,func_threshold,pt_seq_dir):
+    coev_subdir = 'ccmpred/J_and_h/'
+    go_terms_subdir = 'GOterms'
+    coev_ext = '_J_'
+    goterms_ext = '.GOterms.memmap'
+    coev_memmap_dir = os.path.join(memmap_path, coev_subdir)
+    go_terms_memmap_dir = os.path.join(memmap_path, go_terms_subdir)
+
+    go_ontology_filename = os.path.join(memmap_path, 'Scripts/hierarchical_classification_GO_terms/go_db/term.txt')
+    main_ontologies_per_term_dict = {}
+    ontology_labels = {'molecular_function': 'F', 'biological_process': 'P', 'cellular_component': 'C'}
+    with open(go_ontology_filename) as f:
+        for line in f:
+            (termID, description, ontology, GOID) = line.split(',\'')
+            if GOID[:-2][:3] == 'GO:' and ontology[:-1] != '':
+                main_ontologies_per_term_dict[int(GOID[:-2][3:])] = ontology_labels[ontology[:-1]]
+
+    x_test = []  # List of proteins, where both coevolution and function memmap files exist (previously protein_names_existing)
+    funcs_instances_counter = Counter()  # Counter for annotations per function over all loaded proteins
+    funcs_dict = defaultdict(list)
+    num_proteins = 0
+    while num_proteins < len(protein_names):
+        protein_name = protein_names[num_proteins]
+        func_memmap_path = os.path.join(go_terms_memmap_dir, protein_name + goterms_ext)
+        func_memmap_path = glob.glob(func_memmap_path)
+        if not (func_memmap_path):  # (coev_memmap_path and func_memmap_path):
+            continue
+        # Process memmap file of protein annotations, build a counter with number of annotations for each function
+        x_test.append(protein_name)
+        func_memmap_path = func_memmap_path[0]
+        func_memmap = np.memmap(func_memmap_path, dtype=np.int32, mode='r')
+        for func in func_memmap:
+            # if func in list(main_ontologies_per_term_dict.keys()):
+            #    if (main_ontologies_per_term_dict[func] == 'F'):
+            funcs_instances_counter[func] += 1
+            funcs_dict[protein_name].append(func)
+        del func_memmap
+
+        # To be removed. Number of proteins to load, ideally load all ~40K proteins
+        num_proteins += 1
+        if num_proteins % 100 == 0:
+            print("Loaded {} proteins".format(num_proteins))
+    print("Finished loading {} proteins total".format(num_proteins))
+
+    # Remove rare functions - we don't try to predict them
+    print("Total unique classes: {}".format(len(funcs_instances_counter)))
+    funcs_instances_counter = filter_functions(funcs_instances_counter, func_threshold)
+    print("Total unique classes after filtering: {}".format(len(funcs_instances_counter)))
+
+    # Sort GO terms in ascending order
+    unique_go_values = sorted(funcs_instances_counter.keys())
+    num_classes = len(unique_go_values)
+    # Compiling ground truth vectors
+
+    y_test = []
+    for protein_name in x_test:
+        np_ground_truth = np.zeros((num_classes), dtype=np.float32)
+        for i, goterm in enumerate(unique_go_values):
+            if goterm in funcs_dict[protein_name]:
+                np_ground_truth[i] = 1.0
+        y_test.append(np_ground_truth)
+    train_data = CoevolutionData(x_test, y_test, coev_memmap_dir, coev_ext, pt_seq_dir)
+    # Optional function weighting
+    # function_weights = calculate_label_weights(unique_go_values, funcs_instances_counter, num_proteins)
+    # Preparing index lists for the three main ontologies
+    idxMF = []
+    idxBP = []
+    idxCC = []
+    for i, go_term in enumerate(unique_go_values):
+        if go_term not in list(main_ontologies_per_term_dict.keys()):
+            print("WARNING: Did not find {} in the ontology dictionary, skipping..".format(go_term))
+            continue
+        if main_ontologies_per_term_dict[go_term] == 'F':
+            idxMF.append(i)
+        if main_ontologies_per_term_dict[go_term] == 'P':
+            idxBP.append(i)
+        if main_ontologies_per_term_dict[go_term] == 'C':
+            idxCC.append(i)
+    return (
+        x_test,
+        y_test,
+        train_data,
+        unique_go_values,
+        idxMF,
+        idxBP,
+        idxCC)
+
