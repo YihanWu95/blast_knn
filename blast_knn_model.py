@@ -6,14 +6,12 @@ from accuracy_measure import *
 
 class BlastKnnModel:
 
-    def __init__(self,idxMF, idxBP, idxCC,x_train,x_val,unique_go_values,y_train,y_val):
+    def __init__(self,idxMF, idxBP, idxCC,x_train,unique_go_values,y_train):
         self.idxMF = idxMF
         self.idxBP = idxBP
         self.idxCC = idxCC
         self.y_train = torch.from_numpy(np.array(y_train))
-        self.y_val = torch.from_numpy(np.array(y_val))
         self.x_train = x_train
-        self.x_val = x_val
         self.unique_go_values = unique_go_values
         # self.blast_knn_result = blast_knn_result
 
@@ -63,47 +61,10 @@ class BlastKnnModel:
         for i, goterm in enumerate(self.unique_go_values):
             m = np.where(gotermlookup["termID"] == goterm)[0]
             if m:
-                # print(m,goterm)
                 a = int(m)
-                # a = gotermlookup.loc[gotermlookup.termID == goterm]
-                # print(a)
-                # print(np.shape(mid1))
-                # print(np.shape([row[i] for row in y_train_blast])
-                # print(np.shape(pred_prob[:, a]))
                 pred_prob[:, a] = mid1[:,i]
 
         #end add
-
-        y_val_blast = []
-        for protein_name in self.x_val:
-            np_predict = np.zeros((len(self.unique_go_values)), dtype=np.float32)
-            # print(self.blast_knn_result[protein_name])
-            for i, goterm in enumerate(self.unique_go_values):
-                if protein_name not in self.blast_knn_result:
-                    print("not found", protein_name)
-                    np_predict[i] = 0
-                #print(self.blast_knn_result[protein_name])
-                elif self.blast_knn_result[protein_name].get(goterm):
-                    # if goterm in funcs_dict[protein_name]:
-                    np_predict[i] = self.blast_knn_result[protein_name][goterm]
-            y_val_blast.append(np_predict)
-        naive_probabilities_val = torch.FloatTensor(y_val_blast)
-        eval_results_val = evaluate(naive_probabilities_val, self.y_val, self.idxMF, self.idxBP, self.idxCC)
-        print("-----------------------")
-        print("VALIDATION RESULTS:")
-        print("MF:\tF-max: {} Precision: {} Recall: {} Best threshold: {}".format(eval_results_val['MF']['f_max'],
-                                                                                  eval_results_val['MF']['precision'],
-                                                                                  eval_results_val['MF']['recall'],
-                                                                                  eval_results_val['MF']['threshold']))
-        print("BP:\tF-max: {} Precision: {} Recall: {} Best threshold: {}".format(eval_results_val['BP']['f_max'],
-                                                                                  eval_results_val['BP']['precision'],
-                                                                                  eval_results_val['BP']['recall'],
-                                                                                  eval_results_val['BP']['threshold']))
-        print("CC:\tF-max: {} Precision: {} Recall: {} Best threshold: {}".format(eval_results_val['CC']['f_max'],
-                                                                                  eval_results_val['CC']['precision'],
-                                                                                  eval_results_val['CC']['recall'],
-                                                                                  eval_results_val['CC']['threshold']))
-        print("-----------------------")
 
 
 
@@ -123,12 +84,6 @@ class BlastKnnModel:
                 new_go_name = int(go_name.split(':')[1])
                 #print('max',go_name,mid[max(mid, key=mid.get)])
                 result[key][new_go_name]  = mid[go_name]  #blast_knn_result[key]['score'][go_name]/
-            #i=0
-            #for w in sorted(mid, key=mid.get, reverse=False):
-            #    if(i>20):
-            #        break
-            #    i+=1
-            #    result[key][w] = 1
         self.blast_knn_result = result
 
         # for w in sorted(d, key=d.get, reverse=True):
