@@ -69,20 +69,14 @@ def prepare_data(memmap_path,protein_names):
         func_memmap_path = func_memmap_path[0]
         func_memmap = np.memmap(func_memmap_path, dtype=np.int32, mode='r')
         for func in func_memmap:
-            # if func in list(main_ontologies_per_term_dict.keys()):
-            #    if (main_ontologies_per_term_dict[func] == 'F'):
             funcs_instances_counter[func] += 1
             funcs_dict[protein_name].append(func)
         del func_memmap
 
-        # To be removed. Number of proteins to load, ideally load all ~40K proteins
         num_proteins += 1
         if num_proteins % 100 == 0:
             print("Loaded {} proteins".format(num_proteins))
     print("Finished loading {} proteins total".format(num_proteins))
-
-    # Remove rare functions - we don't try to predict them
-
 
     # Sort GO terms in ascending order
     unique_go_values = sorted(funcs_instances_counter.keys())

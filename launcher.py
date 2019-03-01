@@ -26,8 +26,8 @@ if os.path.isdir('/usr/data/cvpr_shared/biology/function'):
                'training_data/clustered_70seqid/hhblits_n5_uniclust30_2016_03/'
     memmap_dir = '/usr/data/cvpr_shared/biology/function/CAFA3/' \
                  'training_data/clustered_70seqid/hhblits_n5_uniclust30_2016_03/'
-    test_data_path = '/usr/data/cvpr_shared/biology/function/CAFA3/' \
-                 'training_data/clustered_70seqid/hhblits_n5_uniclust30_2016_03/data_protein_pred/test/proteins_holdout_stage2.csv'
+    protein_data_path = '/usr/data/cvpr_shared/biology/function/CAFA3/' \
+                            'training_data/clustered_70seqid/hhblits_n5_uniclust30_2016_03/BLAST_KNN/data/proteins.csv'
     gt_path = '/usr/data/cvpr_shared/biology/function/CAFA3/' \
                  'training_data/clustered_70seqid/hhblits_n5_uniclust30_2016_03/data_protein_pred/test/gt_test_holdout_stage2.npy'
     go_term_lookup_path = '/usr/data/cvpr_shared/biology/function/CAFA3/' \
@@ -40,7 +40,8 @@ else:
 torch.multiprocessing.set_sharing_strategy('file_system')
 
 
-proteins = pd.read_csv(test_data_path)
+proteins = pd.read_csv(protein_data_path)
+# num_proteins
 protein_test = proteins['name']
 x,y,unique_go_values,idxMF, idxBP, idxCC = prepare_data(memmap_dir,protein_test)
 
