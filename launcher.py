@@ -56,7 +56,7 @@ blastKnnModel = BlastKnnModel(idxMF, idxBP, idxCC,x,unique_go_values,y)
 BlastKnnModel.prepare_blast_result(blastKnnModel,BLAST_KNN_result_path)
 # # gotermlookup = pd.read_csv(go_term_lookup_path)
 #
-test_prob,idxMF_all, idxBP_all, idxCC_all = blastKnnModel.blast()
+test_prob,gt = blastKnnModel.blast()
 #np.save("/usr/data/cvpr_shared/biology/function/CAFA3/training_data/clustered_70seqid/hhblits_n5_uniclust30_2016_03/data_protein_pred/Blast_test_result_stage2.npy",test_prob)
 # np.save("Blast_test_result_stage2.npy", test_prob)
 # # print(np.shape(test_prob))

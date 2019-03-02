@@ -54,21 +54,21 @@ class BlastKnnModel:
                               'training_data/clustered_70seqid/hhblits_n5_uniclust30_2016_03/data_protein_pred/GOtermsLookup_file.csv'
         gotermlookup = pd.read_csv(go_term_lookup_path)
         pred_prob = np.zeros((len(self.x_train), len(gotermlookup["termID"])))
-        idxMF=np.where(gotermlookup["mainOntology"] == "F")
-        idxBP=np.where(gotermlookup["mainOntology"] == "P")
-        idxCC=np.where(gotermlookup["mainOntology"] == "C")
+        gt = np.zeros((len(self.x_train), len(gotermlookup["termID"])))
         mid1=np.reshape(y_train_blast,np.shape(y_train_blast))
+        mid2 = np.reshape(self.y_train, np.shape(self.y_train))
         for i, goterm in enumerate(self.unique_go_values):
             m = np.where(gotermlookup["termID"] == goterm)[0]
             if m:
                 a = int(m)
                 pred_prob[:, a] = mid1[:,i]
+                gt[:, a] = mid2[:, i]
 
         #end add
 
 
 
-        return pred_prob,idxMF,idxBP,idxCC
+        return pred_prob,gt
 
 
     def prepare_blast_result(self,path):
