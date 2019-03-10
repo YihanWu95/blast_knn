@@ -9,6 +9,7 @@ from argparse import ArgumentParser
 #add YW
 import pandas as pd
 from accuracy_measure import *
+import scipy.sparse as sp
 
 # Add ProteinFunctionPrediction to sys.path for importing modules
 sys.path.append(os.path.normpath(os.getcwd() + os.sep + os.pardir))
@@ -51,7 +52,16 @@ print("Functions in CC: {}".format(len(idxCC)))
 #
 from blast_knn_model import BlastKnnModel
 print("BLAST KNN MODEL")
-
+# gotermlookup = pd.read_csv(go_term_lookup_path)
+# protein = pd.read_csv(protein_data_path)
+# gt = sp.load_npz(go_term_protein)
+# #protein name for training
+# x = protein[protein["Unnamed: 0"].isin(selected_rows)]["name"].tolist()
+# all go term labels
+# unique_go_values = gotermlookup.iloc[selected_columns]["termID"].tolist()
+# #groundtruth matrix
+# y = gt[selected_rows].todense()
+# y = y[:,selected_columns]
 blastKnnModel = BlastKnnModel(idxMF, idxBP, idxCC,x,unique_go_values,y)
 BlastKnnModel.prepare_blast_result(blastKnnModel,BLAST_KNN_result_path)
 test_prob,gt = blastKnnModel.blast()
