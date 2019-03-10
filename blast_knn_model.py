@@ -7,6 +7,14 @@ from accuracy_measure import *
 class BlastKnnModel:
 
     def __init__(self,idxMF, idxBP, idxCC,x_train,unique_go_values,y_train):
+        '''
+        :param idxMF: List of indices for terms in ground truth for Molecular Function
+        :param idxBP: List of indices for terms in ground truth for Biological Process
+        :param idxCC: List of indices for terms in ground truth for Cellular Component
+        :param x_train: name of rotein for training
+        :param unique_go_values: go terms names used in ground truth
+        :param y_train: List of arrays. Encoded ground truth.
+        '''
         self.idxMF = idxMF
         self.idxBP = idxBP
         self.idxCC = idxCC
@@ -16,17 +24,21 @@ class BlastKnnModel:
         # self.blast_knn_result = blast_knn_result
 
     def blast(self):
+        '''
+        loaded Blast_knn_result_parents.npy and generate prediction probabilities of selected proteins based on it and
+        calculate corresponding f scores
+        :return: prediction probabilities and ground truth after embedding into groundtruth spaces
+        '''
+        #initial prediction matrix
         y_train_blast = []
-        # print(len(self.x_train))
+        #loop over all train proteins to find their go term scores in Blast_knn_result_parents.npy
         for protein_name in self.x_train:
-#            print(self.blast_knn_result[protein_name])
             np_predict = np.zeros((len(self.unique_go_values)), dtype=np.float32)
             for i, goterm in enumerate(self.unique_go_values):
                 if protein_name not in self.blast_knn_result:
                     print("not found",protein_name)
                     np_predict[i] = 0
                 elif self.blast_knn_result[protein_name].get(goterm):
-                # if goterm in funcs_dict[protein_name]:
                     np_predict[i] = self.blast_knn_result[protein_name][goterm]
             y_train_blast.append(np_predict)
         naive_probabilities_train = torch.FloatTensor(y_train_blast)
