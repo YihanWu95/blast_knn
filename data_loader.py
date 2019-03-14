@@ -28,6 +28,7 @@ def prepare_data(protein_data_path,num_proteins,go_term_lookup_path,go_term_prot
 
 
     gt = sp.load_npz(go_term_protein_path)
+    print(np.shape(gt))
     # groundtruth matrix
     gt_test = gt[selected_rows].todense()
     print(np.shape(gt_test))

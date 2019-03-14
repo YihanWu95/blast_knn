@@ -18,7 +18,7 @@ class BlastKnnModel:
         self.idxMF = idxMF
         self.idxBP = idxBP
         self.idxCC = idxCC
-        self.y_train = torch.from_numpy(np.array(y_train))
+        self.y_train = torch.from_numpy(np.array(y_train)).float()
         self.x_train = x_train
         self.unique_go_values = unique_go_values
         # self.blast_knn_result = blast_knn_result
