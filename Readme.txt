@@ -2,8 +2,9 @@ Protein Function Prediction from Co-evolution Data
 
 This file explains the code structure of the subproject BLAST-KNN model.
 
+
 ########
-launcher_blast.py
+launcher.py
 ########
 
 This is the main project file, which sets up and starts training runs. The launcher defines all necessary variables
