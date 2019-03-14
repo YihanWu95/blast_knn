@@ -28,13 +28,13 @@ if os.path.isdir('/usr/data/cvpr_shared/biology/function'):
     memmap_dir = '/usr/data/cvpr_shared/biology/function/CAFA3/' \
                  'training_data/clustered_70seqid/hhblits_n5_uniclust30_2016_03/'
     protein_data_path = '/usr/data/cvpr_shared/biology/function/CAFA3/' \
-                            'training_data/clustered_70seqid/hhblits_n5_uniclust30_2016_03/BLAST_KNN/data/proteins.csv'
+                            'training_data/clustered_70seqid/hhblits_n5_uniclust30_2016_03/data_protein_pred/proteins.csv'
     gt_path = '/usr/data/cvpr_shared/biology/function/CAFA3/' \
                  'training_data/clustered_70seqid/hhblits_n5_uniclust30_2016_03/data_protein_pred/test/gt_test_holdout_stage2.npy'
     go_term_lookup_path = '/usr/data/cvpr_shared/biology/function/CAFA3/' \
                  'training_data/clustered_70seqid/hhblits_n5_uniclust30_2016_03/data_protein_pred/GOtermsLookup_file.csv'
     BLAST_KNN_result_path = '/usr/data/cvpr_shared/biology/function/CAFA3/' \
-                            'training_data/clustered_70seqid/hhblits_n5_uniclust30_2016_03/BLAST_KNN/data/Blast_knn_result_parents.npy'
+                            'training_data/clustered_70seqid/hhblits_n5_uniclust30_2016_03/protein_fun_pred_WS19/BLAST_KNN/data/Blast_knn_result_parents.npy'
 else:
     sys.exit('Data directories not found.')
 
