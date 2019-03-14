@@ -6,7 +6,7 @@ from accuracy_measure import *
 
 class BlastKnnModel:
 
-    def __init__(self,idxMF, idxBP, idxCC,x_train,unique_go_values,y_train):
+    def __init__(self,idxMF, idxBP, idxCC,x_test,unique_go_values,y_test):
         '''
         :param idxMF: List of indices for terms in ground truth for Molecular Function
         :param idxBP: List of indices for terms in ground truth for Biological Process
@@ -18,8 +18,8 @@ class BlastKnnModel:
         self.idxMF = idxMF
         self.idxBP = idxBP
         self.idxCC = idxCC
-        self.y_train = torch.from_numpy(np.array(y_train)).float()
-        self.x_train = x_train
+        self.y_test = torch.from_numpy(np.array(y_test)).float()
+        self.x_test = x_test
         self.unique_go_values = unique_go_values
         # self.blast_knn_result = blast_knn_result
 
@@ -27,12 +27,12 @@ class BlastKnnModel:
         '''
         loaded Blast_knn_result_parents.npy and generate prediction probabilities of selected proteins based on it and
         calculate corresponding f scores
-        :return: prediction probabilities and ground truth after embedding into groundtruth spaces
+        :return: prediction probabilities and ground truth after embedding into ground truth spaces
         '''
         #initial prediction matrix
-        y_train_blast = []
+        y_test_blast = []
         #loop over all train proteins to find their go term scores in Blast_knn_result_parents.npy
-        for protein_name in self.x_train:
+        for protein_name in self.x_test:
             np_predict = np.zeros((len(self.unique_go_values)), dtype=np.float32)
             for i, goterm in enumerate(self.unique_go_values):
                 if protein_name not in self.blast_knn_result:
@@ -40,50 +40,32 @@ class BlastKnnModel:
                     np_predict[i] = 0
                 elif self.blast_knn_result[protein_name].get(goterm):
                     np_predict[i] = self.blast_knn_result[protein_name][goterm]
-            y_train_blast.append(np_predict)
-        naive_probabilities_train = torch.FloatTensor(y_train_blast)
-        eval_results_train = evaluate(naive_probabilities_train, self.y_train, self.idxMF, self.idxBP, self.idxCC)
-        print("TRAIN RESULTS:")
-        print("MF:\tF-max: {} Precision: {} Recall: {} Best threshold: {}".format(eval_results_train['MF']['f_max'],
-                                                                                  eval_results_train['MF']['precision'],
-                                                                                  eval_results_train['MF']['recall'],
-                                                                                  eval_results_train['MF'][
+            y_test_blast.append(np_predict)
+        naive_probabilities_train = torch.FloatTensor(y_test_blast)
+        eval_results_test = evaluate(naive_probabilities_train, self.y_test, self.idxMF, self.idxBP, self.idxCC)
+        #print test results
+        print("TEST RESULTS:")
+        print("MF:\tF-max: {} Precision: {} Recall: {} Best threshold: {}".format(eval_results_test['MF']['f_max'],
+                                                                                  eval_results_test['MF']['precision'],
+                                                                                  eval_results_test['MF']['recall'],
+                                                                                  eval_results_test['MF'][
                                                                                       'threshold']))
-        print("BP:\tF-max: {} Precision: {} Recall: {} Best threshold: {}".format(eval_results_train['BP']['f_max'],
-                                                                                  eval_results_train['BP']['precision'],
-                                                                                  eval_results_train['BP']['recall'],
-                                                                                  eval_results_train['BP'][
+        print("BP:\tF-max: {} Precision: {} Recall: {} Best threshold: {}".format(eval_results_test['BP']['f_max'],
+                                                                                  eval_results_test['BP']['precision'],
+                                                                                  eval_results_test['BP']['recall'],
+                                                                                  eval_results_test['BP'][
                                                                                       'threshold']))
-        print("CC:\tF-max: {} Precision: {} Recall: {} Best threshold: {}".format(eval_results_train['CC']['f_max'],
-                                                                                  eval_results_train['CC']['precision'],
-                                                                                  eval_results_train['CC']['recall'],
-                                                                                  eval_results_train['CC'][
+        print("CC:\tF-max: {} Precision: {} Recall: {} Best threshold: {}".format(eval_results_test['CC']['f_max'],
+                                                                                  eval_results_test['CC']['precision'],
+                                                                                  eval_results_test['CC']['recall'],
+                                                                                  eval_results_test['CC'][
                                                                                       'threshold']))
         print("-----------------------")
-
-        # embedding test probability matrix into (num.proteins,num.totalgoterms)
-        go_term_lookup_path = '/usr/data/cvpr_shared/biology/function/CAFA3/' \
-                              'training_data/clustered_70seqid/hhblits_n5_uniclust30_2016_03/data_protein_pred/GOtermsLookup_file.csv'
-        gotermlookup = pd.read_csv(go_term_lookup_path)
-        pred_prob = np.zeros((len(self.x_train), len(gotermlookup["termID"])))
-        gt = np.zeros((len(self.x_train), len(gotermlookup["termID"])))
-        mid1=np.reshape(y_train_blast,np.shape(y_train_blast))
-        mid2 = np.reshape(self.y_train, np.shape(self.y_train))
-        for i, goterm in enumerate(self.unique_go_values):
-            m = np.where(gotermlookup["termID"] == goterm)[0]
-            if m:
-                a = int(m)
-                pred_prob[:, a] = mid1[:,i]
-                gt[:, a] = mid2[:, i]
-
-        #end add
-
-
-
-        return pred_prob,gt
+        return y_test_blast,np.array(self.y_test)
 
 
     def prepare_blast_result(self,path):
+
         blast_knn_result = np.load(path).item()
         result = {}
         # result_final = {}
@@ -98,4 +80,3 @@ class BlastKnnModel:
                 result[key][new_go_name]  = mid[go_name]  #blast_knn_result[key]['score'][go_name]/
         self.blast_knn_result = result
 
-        # for w in sorted(d, key=d.get, reverse=True):

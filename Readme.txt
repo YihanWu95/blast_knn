@@ -15,10 +15,6 @@ How to run? 'python launcher.py [<options>]' with the following possible options
 
 '-n', '--num_proteins': int: Number of protein samples to be used during training.
 
-Training results are currently saved in
-'/usr/data/cvpr_shared/biology/function/CAFA3/training_data/clustered_70seqid/hhblits_n5_uniclust30_2016_03/results/'
-
-
 
 ########
 data_loader.py
@@ -39,7 +35,8 @@ lists of ground truth indices for each of the ontologies are computed and return
 blast_knn_model.py
 ########
 
-Compute go term score for each protein in the training set. Since I have generate a numpy file (Blast_knn_result_parents.npy) which contains all proteins and their go term score. Generating prediction matrix for training proteins is kind of easy -- just extract training proteins and go terms score from 'Blast_knn_result_parents.npy'
+Compute go term score for each protein in the training set. Since I have generate a numpy file (Blast_knn_result_parents.npy) which contains all proteins and their go term score.
+Generating prediction matrix for training proteins is kind of easy -- just extract training proteins and go terms score from 'Blast_knn_result_parents.npy'
 
 
 ########
