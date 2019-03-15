@@ -36,7 +36,7 @@ def prepare_data(protein_data_path,num_proteins,go_term_lookup_path,go_term_prot
 
     # load the sparse matrix of ground truth, which include all proteins and all go_terms
     gt = sp.load_npz(go_term_protein_path)
-    print(np.shape(gt))
+    # print(np.shape(gt))
     # selected the ground truth for test proteins
     gt_test = gt[selected_rows].todense()
     # print(np.shape(gt_test))
