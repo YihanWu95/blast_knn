@@ -1,6 +1,11 @@
 Protein Function Prediction from Co-evolution Data
 
+Author: Yihan Wu (yihan.wu@tum.de)
+
 This file explains the preparation of dataset for BLAST-KNN.
+
+Important: If one want to run blast locally, please download blast software from 'https://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&PAGE_TYPE=BlastDocs&DOC_TYPE=Download'
+Then download the corresponding database (for me I download the swissprot database)
 
 All the necessary data is stored on the server under '/usr/data/cvpr_shared/biology/function/CAFA3/training_data/clustered_70seqid/hhblits_n5_uniclust30_2016_03/protein_fun_pred_WS19/BLAST_KNN/BLAST_data_prepare'
 

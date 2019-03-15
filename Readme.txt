@@ -1,5 +1,7 @@
 Protein Function Prediction from Co-evolution Data
 
+Author: Yihan Wu (yihan.wu@tum.de)
+
 This file explains the code structure of the subproject BLAST-KNN model.
 
 

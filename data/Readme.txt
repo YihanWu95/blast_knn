@@ -1,7 +1,8 @@
 Protein Function Prediction from Co-evolution Data
 
-This file explains the datasets of the subproject BLAST-KNN model.
+Author: Yihan Wu (yihan.wu@tum.de)
 
+This file explains the datasets of the subproject BLAST-KNN model.
 
 All the necessary data is stored on the server under '/usr/data/cvpr_shared/biology/function/CAFA3/training_data/clustered_70seqid/hhblits_n5_uniclust30_2016_03/protein_fun_pred_WS19/BLAST_KNN/data'
 
