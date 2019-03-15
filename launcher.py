@@ -34,7 +34,7 @@ from blast_knn_model import BlastKnnModel
 print("BLAST KNN MODEL")
 
 #Initialize BlastKnnModel
-blastKnnModel = BlastKnnModel(idxMF, idxBP, idxCC,protein_test_name,unique_go_values,gt_test)
+blastKnnModel = BlastKnnModel(idxMF, idxBP, idxCC,protein_test_name,unique_go_values,gt_test,verbose = True)
 BlastKnnModel.prepare_blast_result(blastKnnModel,BLAST_KNN_result_path)
 
 #Running blast() and calculate f-score

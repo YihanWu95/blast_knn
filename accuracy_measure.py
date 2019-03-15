@@ -16,7 +16,7 @@ def evaluate_pr_rc(prediction_prob, ground_truth):
     recall_max = 0
 
     # [N*C]  N proteins with C classes
-    # prediction, ground_truth both [N*C]-tensors
+    # predict, ground_truth both [N*C]-tensors
     # rows: protein1, protein2, protein3, etc.; columns: func1, func2, func3, etc.
 
     threshold = 0.01
@@ -24,8 +24,8 @@ def evaluate_pr_rc(prediction_prob, ground_truth):
         precision = 0
         recall = 0
 
-        # get threshold dependant binary prediction
-        # prediction = 1 where bigger than threshold
+        # get threshold dependant binary predict
+        # predict = 1 where bigger than threshold
         prediction = (prediction_prob > threshold)
         prediction = prediction.float()
 
@@ -110,11 +110,11 @@ def evaluate(prediction_prob, ground_truth, idxMF, idxBP, idxCC):
 #     while threshold <= 0.9:
 #         precision = 0
 #         recall = 0
-#         prediction = (prediction_prob > threshold)
-#         prediction = prediction.float()
+#         predict = (prediction_prob > threshold)
+#         predict = predict.float()
 #
-#         true_positives = torch.sum(prediction * ground_truth)  # sum over columns
-#         all_predicted_positives = torch.sum(prediction)  # sum over columns
+#         true_positives = torch.sum(predict * ground_truth)  # sum over columns
+#         all_predicted_positives = torch.sum(predict)  # sum over columns
 #         all_real_positives = torch.sum(ground_truth)  # sum over columns
 #
 #         # m: number of sequences with at least one predicted score greater than or equal to threshold
@@ -134,5 +134,5 @@ def evaluate(prediction_prob, ground_truth, idxMF, idxBP, idxCC):
 #                 recall_max = recall
 #
 #         threshold += 0.05
-#     return threshold_max, precision_max, recall_max, prediction
+#     return threshold_max, precision_max, recall_max, predict
 # #end(added)
