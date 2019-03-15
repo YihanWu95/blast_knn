@@ -4,6 +4,7 @@ import pandas as pd
 from data_loader import prepare_data
 from blast_knn_model import BlastKnnModel
 
+#for combining models, reture probability matrix for test proteins.
 def predict(protein_data_path):
     if os.path.isdir('/usr/data/cvpr_shared/biology/function'):
         # protein_data_path = '/usr/data/cvpr_shared/biology/function/CAFA3/' \
