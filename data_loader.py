@@ -41,7 +41,6 @@ def prepare_data(protein_data_path,num_proteins,go_term_lookup_path,go_term_prot
     gt_test = gt[selected_rows].todense()
     # print(np.shape(gt_test))
     print("ground truth matrix is ready!")
-#    gt_test = gt_test[:,selected_columns]
 
 
     return (
