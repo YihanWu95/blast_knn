@@ -9,7 +9,6 @@ All the necessary data is stored on the server under '/usr/data/cvpr_shared/biol
 But if one wants to run sth locally, you can copy the data from there and store the data here. For example for running the notebooks. Following a short explanation of the important data files:
 
 
-
 ########
 GOtermsPerProtein_sparse.npz
 ########
